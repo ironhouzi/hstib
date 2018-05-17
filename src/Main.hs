@@ -52,8 +52,12 @@ data SyllableComponent
   deriving (Eq, Show, Ord, Enum)
 
 data ParsedLetter =
-  ParsedLetter (Letter, SyllableComponent)
-  deriving (Eq, Show)
+  ParsedLetter (SyllableComponent, Letter)
+  deriving (Eq, Show, Ord)
+
+data SyllableComponents =
+  SyllableComponents (Set.Set SyllableComponent)
+  deriving (Eq, Show, Ord)
 
 letterToString :: Letter -> String
 letterToString l =
