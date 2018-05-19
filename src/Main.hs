@@ -2,6 +2,7 @@ module Main where
 
 import Data.Char
 import Data.List
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 data Letter
@@ -46,8 +47,9 @@ data SyllableComponent
   | Superscribe
   | Subscribe
   | Root
-  | Postfix
-  | SecondPostfix
+  | Vowel
+  | Suffix
+  | SecondSuffix
   | Genitive
   deriving (Eq, Show, Ord, Enum)
 
@@ -55,9 +57,25 @@ data ParsedLetter =
   ParsedLetter (SyllableComponent, Letter)
   deriving (Eq, Show, Ord)
 
-data SyllableComponents =
-  SyllableComponents (Set.Set SyllableComponent)
-  deriving (Eq, Show, Ord)
+data ParsedSyllable = ParsedSyllable
+  { components :: Set.Set SyllableComponent
+  , parsedLetters :: Map.Map SyllableComponent Letter
+  } deriving (Eq, Show)
+
+emptyParsedSyllable :: ParsedSyllable
+emptyParsedSyllable = ParsedSyllable Set.empty Map.empty
+
+newParsedSyllable :: [(Letter, SyllableComponent)] -> ParsedSyllable
+newParsedSyllable ls =
+  foldr (\(l, s) -> addComponent l s) emptyParsedSyllable ls
+
+addComponent :: Letter -> SyllableComponent -> ParsedSyllable -> ParsedSyllable
+addComponent l s sc@(ParsedSyllable c pl)
+  | not $ Set.member s c = ParsedSyllable (Set.insert s c) (Map.insert s l pl)
+  | otherwise = sc
+
+getComponent :: SyllableComponent -> ParsedSyllable -> Maybe Letter
+getComponent sc (ParsedSyllable c pl) = Map.lookup sc pl
 
 letterToString :: Letter -> String
 letterToString l =
@@ -154,9 +172,36 @@ superscribedLetters = Set.fromList [Ra, La, Sa]
 
 subscribedLetters = Set.fromList [Ya, Ra, La, Wa]
 
-postfixLetters = Set.fromList [Ga, Nga, Da, Na, Ba, Ma, Achung, Ra, La, Sa]
+suffixLetters = Set.fromList [Ga, Nga, Da, Na, Ba, Ma, Achung, Ra, La, Sa]
 
-secondPostfixLetters = Set.fromList [Sa, Da]
+secondSuffixLetters = Set.fromList [Sa, Da]
+
+ragoLetters = Set.fromList [Ka, Ga, Nga, Ja, Nya, Ta, Da, Na, Ba, Ma, Tsa, Dza]
+
+lagoLetters = Set.fromList [Ka, Ga, Nga, Ca, Ja, Ta, Da, Pa, Ba, Ha]
+
+sagoLetters = Set.fromList [Ka, Ga, Nga, Nya, Ta, Da, Pa, Ba, Ma, Tsa]
+
+yataLetters = Set.fromList [Ka, Kha, Ga, Pa, Pha, Ba, Ma, Ha]
+
+rataLetters =
+  Set.fromList [Ka, Kha, Ga, Ta, Tha, Da, Na, Pa, Pha, Ba, Ma, Sa, Ha]
+
+lataLetters = Set.fromList [Ka, Ga, Ba, Ra, Sa, Za]
+
+wazurLetters =
+  Set.fromList
+    [Ka, Kha, Ga, Ca, Nya, Ta, Da, Tsa, Tsha, Zha, Za, Ra, La, Sha, Sa, Ha]
+
+vowelIsFirst :: [Letter] -> ParsedSyllable
+vowelIsFirst (l:ls) = newParsedSyllable [(l, Root)]
+
+vowelIsSecond :: [Letter] -> ParsedSyllable
+vowelIsSecond ls
+  | elem (head letters) [(Ka) .. (Ha)] && elem (last letters) [(A) .. (O)] =
+    newParsedSyllable [(head letters, Root), (last letters, Vowel)]
+  where
+    letters = take 2 ls
 
 data Ptree a =
   Pnode a
