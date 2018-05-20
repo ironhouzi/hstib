@@ -166,6 +166,10 @@ stringToLetter s =
 -- letters = ['K', 'G', 'N', 'C', 'J', 'T', 'D', 'P', 'B', 'M', 'W', 'Z', '\'', 'Y', 'R', 'L', 'S', 'H', 'A', 'I', 'U', 'E', 'O']
 alphabet = map letterToString [(Ka) .. (O)]
 
+consonants = Set.fromList [(Ka) .. (Ha)]
+
+vowels = Set.fromList [(A) .. (O)]
+
 prefixLetters = Set.fromList [Ga, Da, Ba, Ma, Achung]
 
 superscribedLetters = Set.fromList [Ra, La, Sa]
@@ -192,6 +196,34 @@ lataLetters = Set.fromList [Ka, Ga, Ba, Ra, Sa, Za]
 wazurLetters =
   Set.fromList
     [Ka, Kha, Ga, Ca, Nya, Ta, Da, Tsa, Tsha, Zha, Za, Ra, La, Sha, Sa, Ha]
+
+isPrefix :: Letter -> Bool
+isPrefix l = Set.member l prefixLetters
+
+isSuffix :: Letter -> Bool
+isSuffix l = Set.member l suffixLetters
+
+isSuffix2 :: Letter -> Bool
+isSuffix2 l = Set.member l secondSuffixLetters
+
+isVowel :: Letter -> Bool
+isVowel l = Set.member l vowels
+
+isConsonant :: Letter -> Bool
+isConsonant l = Set.member l consonants
+
+superscribes :: Letter -> Letter -> Bool
+superscribes Ra l = Set.member l ragoLetters
+superscribes La l = Set.member l lagoLetters
+superscribes Sa l = Set.member l sagoLetters
+superscribes _ _ = False
+
+subscribes :: Letter -> Letter -> Bool
+subscribes Ya l = Set.member l yataLetters
+subscribes Ra l = Set.member l rataLetters
+subscribes La l = Set.member l lataLetters
+subscribes Wa l = Set.member l wazurLetters
+subscribes _ _ = False
 
 vowelIsFirst :: [Letter] -> ParsedSyllable
 vowelIsFirst (l:ls) = newParsedSyllable [(l, Root)]
