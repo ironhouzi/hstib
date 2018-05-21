@@ -207,10 +207,10 @@ isSuffix2 :: Letter -> Bool
 isSuffix2 l = Set.member l secondSuffixLetters
 
 isVowel :: Letter -> Bool
-isVowel l = Set.member l vowels
+isVowel l = A <= l && l <= O
 
 isConsonant :: Letter -> Bool
-isConsonant l = Set.member l consonants
+isConsonant l = Ka <= l && l <= Ha
 
 superscribes :: Letter -> Letter -> Bool
 superscribes Ra l = Set.member l ragoLetters
@@ -219,10 +219,10 @@ superscribes Sa l = Set.member l sagoLetters
 superscribes _ _ = False
 
 subscribes :: Letter -> Letter -> Bool
-subscribes Ya l = Set.member l yataLetters
-subscribes Ra l = Set.member l rataLetters
-subscribes La l = Set.member l lataLetters
-subscribes Wa l = Set.member l wazurLetters
+subscribes l Ya = Set.member l yataLetters
+subscribes l Ra = Set.member l rataLetters
+subscribes l La = Set.member l lataLetters
+subscribes l Wa = Set.member l wazurLetters
 subscribes _ _ = False
 
 vowelIsFirst :: [Letter] -> ParsedSyllable
@@ -230,7 +230,7 @@ vowelIsFirst (l:ls) = newParsedSyllable [(l, Root)]
 
 vowelIsSecond :: [Letter] -> ParsedSyllable
 vowelIsSecond ls
-  | elem (head letters) [(Ka) .. (Ha)] && elem (last letters) [(A) .. (O)] =
+  | (isConsonant . head $ letters) && (isVowel . last $ letters) =
     newParsedSyllable [(head letters, Root), (last letters, Vowel)]
   where
     letters = take 2 ls
