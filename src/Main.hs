@@ -212,17 +212,53 @@ isVowel l = A <= l && l <= O
 isConsonant :: Letter -> Bool
 isConsonant l = Ka <= l && l <= Ha
 
+isSupersriber :: Letter -> Bool
+isSupersriber l = Set.member l superscribedLetters
+
+isRa :: Letter -> Bool
+isRa l = l == Ra
+
+isSa :: Letter -> Bool
+isSa l = l == Sa
+
+isLa :: Letter -> Bool
+isLa l = l == La
+
+isYa :: Letter -> Bool
+isYa l = l == Ya
+
+isWa :: Letter -> Bool
+isWa l = l == Wa
+
+isRagoLetter :: Letter -> Bool
+isRagoLetter l = Set.member l ragoLetters
+
+isSagoLetter :: Letter -> Bool
+isSagoLetter l = Set.member l sagoLetters
+
+isLagoLetter :: Letter -> Bool
+isLagoLetter l = Set.member l lagoLetters
+
+isYataLetter :: Letter -> Bool
+isYataLetter l = Set.member l yataLetters
+isRataLetter :: Letter -> Bool
+isRataLetter l = Set.member l rataLetters
+isLataLetter :: Letter -> Bool
+isLataLetter l = Set.member l lataLetters
+isWazurLetter :: Letter -> Bool
+isWazurLetter l = Set.member l wazurLetters
+
 superscribes :: Letter -> Letter -> Bool
-superscribes Ra l = Set.member l ragoLetters
-superscribes La l = Set.member l lagoLetters
-superscribes Sa l = Set.member l sagoLetters
+Ra `superscribes` l = isRagoLetter l
+La `superscribes` l = isLagoLetter l
+Sa `superscribes` l = isSagoLetter l
 superscribes _ _ = False
 
 subscribes :: Letter -> Letter -> Bool
-subscribes l Ya = Set.member l yataLetters
-subscribes l Ra = Set.member l rataLetters
-subscribes l La = Set.member l lataLetters
-subscribes l Wa = Set.member l wazurLetters
+Ya `subscribes` l = isYataLetter l
+Ra `subscribes` l = isRataLetter l
+La `subscribes` l = isLataLetter l
+Wa `subscribes` l = isWazurLetter l
 subscribes _ _ = False
 
 vowelIsFirst :: [Letter] -> ParsedSyllable
@@ -239,6 +275,72 @@ data Ptree a =
   Pnode a
         [Ptree a]
   deriving (Eq, Show)
+
+type Parser a = [Letter] -> [(a, [Letter])]
+
+result :: a -> Parser a
+result v = \inp -> [(v, inp)]
+
+zero :: Parser a
+zero = \inp -> []
+
+item :: Parser Letter
+item =
+  \inp ->
+    case inp of
+      [] -> []
+      (x:xs) -> [(x, xs)]
+
+seq :: Parser a -> Parser b -> Parser (a, b)
+p `seq` q = \inp -> [((v, w), inp') | (v, inp') <- p inp, (w, inp'') <- q inp']
+
+bind :: Parser a -> (a -> Parser b) -> Parser b
+p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
+
+sat :: (Letter -> Bool) -> Parser Letter
+sat p =
+  item `bind` \x ->
+    if p x
+      then result x
+      else zero
+
+plus :: Parser a -> Parser a -> Parser a
+p `plus` q = \inp -> (p inp ++ q inp)
+
+vowel :: Parser Letter
+vowel = sat isVowel
+
+ragoLetter :: Parser Letter
+ragoLetter = sat isRagoLetter
+
+rago :: Parser [Letter]
+rago = sat isRa `bind` \x -> sat isRagoLetter `bind` \y -> result [x, y]
+
+sago :: Parser [Letter]
+sago = sat isSa `bind` \x -> sat isSagoLetter `bind` \y -> result [x, y]
+
+lago :: Parser [Letter]
+lago = sat isLa `bind` \x -> sat isLagoLetter `bind` \y -> result [x, y]
+
+superscribe :: Parser [Letter]
+superscribe = rago `plus` sago `plus` lago
+
+rata :: Parser [Letter]
+rata = sat isRataLetter `bind` \x -> sat isRa `bind` \y -> result [x, y]
+
+yata :: Parser [Letter]
+yata = sat isYataLetter `bind` \x -> sat isYa `bind` \y -> result [x, y]
+
+lata :: Parser [Letter]
+lata = sat isLataLetter `bind` \x -> sat isLa `bind` \y -> result [x, y]
+
+wazur :: Parser [Letter]
+wazur = sat isWazurLetter `bind` \x -> sat isWa `bind` \y -> result [x, y]
+
+subscribe :: Parser [Letter]
+subscribe = rata `plus` yata `plus` lata `plus` wazur
+
+-- start = stack `bind` \x -> sat isVowel `bind` \y -> result [x, y]
 
 ptAdd :: String -> Ptree Char
 ptAdd (c:cs)
