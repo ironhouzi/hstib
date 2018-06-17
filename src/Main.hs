@@ -276,118 +276,123 @@ data Ptree a =
         [Ptree a]
   deriving (Eq, Show)
 
-type Parser a = [Letter] -> [(a, [Letter])]
+-- type Parser a = ([Letter] -> [(a, [Letter])])
+data Parser a = Parser ([Letter] -> [(a, [Letter])])
 
-result :: a -> Parser a
-result v = \inp -> [(v, inp)]
+class TibMonad m where
+    result :: a -> m a
+    bind :: m a -> (a -> m b) -> m b
 
-zero :: Parser a
-zero = \inp -> []
+instance TibMonad Parser where
+    -- result :: a -> Parser a
+    result v = \inp -> [(v, inp)]
+    -- -- bind :: Parser a -> (a -> Parser b) -> Parser b
+    -- p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
 
-item :: Parser Letter
-item =
-  \inp ->
-    case inp of
-      [] -> []
-      (x:xs) -> [(x, xs)]
+-- zero :: Parser a
+-- zero = \inp -> []
 
-seq :: Parser a -> Parser b -> Parser (a, b)
-p `seq` q = \inp -> [((v, w), inp') | (v, inp') <- p inp, (w, inp'') <- q inp']
+-- item :: Parser Letter
+-- item =
+--   \inp ->
+--     case inp of
+--       [] -> []
+--       (x:xs) -> [(x, xs)]
 
-bind :: Parser a -> (a -> Parser b) -> Parser b
-p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
+-- seq :: Parser a -> Parser b -> Parser (a, b)
+-- p `seq` q = \inp -> [((v, w), inp') | (v, inp') <- p inp, (w, inp'') <- q inp']
 
-sat :: (Letter -> Bool) -> Parser Letter
-sat p =
-  item `bind` \x ->
-    if p x
-      then result x
-      else zero
+-- sat :: (Letter -> Bool) -> Parser Letter
+-- sat p =
+--   item `bind` \x ->
+--     if p x
+--       then result x
+--       else zero
 
-plus :: Parser a -> Parser a -> Parser a
-p `plus` q = \inp -> (p inp ++ q inp)
+-- plus :: Parser a -> Parser a -> Parser a
+-- p `plus` q = \inp -> (p inp ++ q inp)
 
-vowel :: Parser Letter
-vowel = sat isVowel
+-- vowel :: Parser Letter
+-- vowel = sat isVowel
 
-ragoLetter :: Parser Letter
-ragoLetter = sat isRagoLetter
+-- ragoLetter :: Parser Letter
+-- ragoLetter = sat isRagoLetter
 
-rago :: Parser [Letter]
-rago = sat isRa `bind` \x -> sat isRagoLetter `bind` \y -> result [x, y]
+-- rago :: Parser [Letter]
+-- rago = sat isRa `bind` \x -> sat isRagoLetter `bind` \y -> result [x, y]
 
-sago :: Parser [Letter]
-sago = sat isSa `bind` \x -> sat isSagoLetter `bind` \y -> result [x, y]
+-- sago :: Parser [Letter]
+-- sago = sat isSa `bind` \x -> sat isSagoLetter `bind` \y -> result [x, y]
 
-lago :: Parser [Letter]
-lago = sat isLa `bind` \x -> sat isLagoLetter `bind` \y -> result [x, y]
+-- lago :: Parser [Letter]
+-- lago = sat isLa `bind` \x -> sat isLagoLetter `bind` \y -> result [x, y]
 
-superscribe :: Parser [Letter]
-superscribe = rago `plus` sago `plus` lago
+-- superscribe :: Parser [Letter]
+-- superscribe = rago `plus` sago `plus` lago
 
-rata :: Parser [Letter]
-rata = sat isRataLetter `bind` \x -> sat isRa `bind` \y -> result [x, y]
+-- rata :: Parser [Letter]
+-- rata = sat isRataLetter `bind` \x -> sat isRa `bind` \y -> result [x, y]
 
-yata :: Parser [Letter]
-yata = sat isYataLetter `bind` \x -> sat isYa `bind` \y -> result [x, y]
+-- yata :: Parser [Letter]
+-- yata = sat isYataLetter `bind` \x -> sat isYa `bind` \y -> result [x, y]
 
-lata :: Parser [Letter]
-lata = sat isLataLetter `bind` \x -> sat isLa `bind` \y -> result [x, y]
+-- lata :: Parser [Letter]
+-- lata = sat isLataLetter `bind` \x -> sat isLa `bind` \y -> result [x, y]
 
-wazur :: Parser [Letter]
-wazur = sat isWazurLetter `bind` \x -> sat isWa `bind` \y -> result [x, y]
+-- wazur :: Parser [Letter]
+-- wazur = sat isWazurLetter `bind` \x -> sat isWa `bind` \y -> result [x, y]
 
-subscribe :: Parser [Letter]
-subscribe = rata `plus` yata `plus` lata `plus` wazur
+-- subscribe :: Parser [Letter]
+-- subscribe = rata `plus` yata `plus` lata `plus` wazur
 
--- start = stack `bind` \x -> sat isVowel `bind` \y -> result [x, y]
+-- -- start = stack `bind` \x -> sat isVowel `bind` \y -> result [x, y]
 
-ptAdd :: String -> Ptree Char
-ptAdd (c:cs)
-  | cs == [] = Pnode c []
-  | otherwise = Pnode c [ptAdd cs]
+-- ptAdd :: String -> Ptree Char
+-- ptAdd (c:cs)
+--   | cs == [] = Pnode c []
+--   | otherwise = Pnode c [ptAdd cs]
 
-ptInsert :: String -> [Ptree Char] -> [Ptree Char]
-ptInsert [] ts = ts
-ptInsert s [] = [ptAdd s]
-ptInsert s@(c:cs) (x@(Pnode v ch):xs)
-  | c == v = (Pnode v (ptInsert cs ch)) : xs
-  | otherwise = x : (ptInsert s xs)
+-- ptInsert :: String -> [Ptree Char] -> [Ptree Char]
+-- ptInsert [] ts = ts
+-- ptInsert s [] = [ptAdd s]
+-- ptInsert s@(c:cs) (x@(Pnode v ch):xs)
+--   | c == v = (Pnode v (ptInsert cs ch)) : xs
+--   | otherwise = x : (ptInsert s xs)
 
-prefixTree = ptInsert "g." (foldr ptInsert [] alphabet)
+-- prefixTree = ptInsert "g." (foldr ptInsert [] alphabet)
 
-ptNext :: String -> [Ptree Char] -> String -> Maybe String
-ptNext [] _ _ = Nothing
-ptNext _ [] _ = Nothing
-ptNext s@(c:cs) (x@(Pnode v children):xs) acc
-  | c /= v = ptNext s xs acc
-  | cs == [] && c == v = Just (acc ++ [c])
-  | c == v = ptNext cs children (acc ++ [c])
-  | otherwise = Nothing
+-- ptNext :: String -> [Ptree Char] -> String -> Maybe String
+-- ptNext [] _ _ = Nothing
+-- ptNext _ [] _ = Nothing
+-- ptNext s@(c:cs) (x@(Pnode v children):xs) acc
+--   | c /= v = ptNext s xs acc
+--   | cs == [] && c == v = Just (acc ++ [c])
+--   | c == v = ptNext cs children (acc ++ [c])
+--   | otherwise = Nothing
 
-prefix :: String -> Maybe String
-prefix s = ptNext s prefixTree ""
+-- prefix :: String -> Maybe String
+-- prefix s = ptNext s prefixTree ""
 
-builder :: Char -> [String] -> [String]
-builder c [] = [[c]]
-builder c s@(x:xs)
-  | prefix (c : x) == Nothing = ([c] : s)
-  | otherwise = (c : x) : xs
+-- builder :: Char -> [String] -> [String]
+-- builder c [] = [[c]]
+-- builder c s@(x:xs)
+--   | prefix (c : x) == Nothing = ([c] : s)
+--   | otherwise = (c : x) : xs
 
-build :: String -> [String]
-build s = foldr builder [] s
+-- build :: String -> [String]
+-- build s = foldr builder [] s
 
-letters :: String -> [Letter]
-letters s = map stringToLetter (build s)
+-- letters :: String -> [Letter]
+-- letters s = map stringToLetter (build s)
 
-vowelIndexer :: [Letter] -> Int -> Maybe Int
-vowelIndexer [] _ = Nothing
-vowelIndexer (l:ls) n
-  | elem l [(A) .. (O)] = Just n
-  | otherwise = vowelIndexer ls (n + 1)
+-- vowelIndexer :: [Letter] -> Int -> Maybe Int
+-- vowelIndexer [] _ = Nothing
+-- vowelIndexer (l:ls) n
+--   | elem l [(A) .. (O)] = Just n
+--   | otherwise = vowelIndexer ls (n + 1)
 
-vowelIndex :: [Letter] -> Maybe Int
-vowelIndex ls = vowelIndexer ls 0
+-- vowelIndex :: [Letter] -> Maybe Int
+-- vowelIndex ls = vowelIndexer ls 0
 
 main :: IO ()
 main = do
