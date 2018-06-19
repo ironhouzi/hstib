@@ -276,34 +276,36 @@ data Ptree a =
         [Ptree a]
   deriving (Eq, Show)
 
-type Parser a = [Letter] -> [(a, [Letter])]
+-- type Parser a = [Letter] -> [(a, [Letter])]
 -- data Parser a = Parser ([Letter] -> [(a, [Letter])])
+newtype Parser a = Parser ([Letter] -> [(a, [Letter])])
 
--- class TibMonad m where
---     result :: a -> m a
---     bind :: m a -> (a -> m b) -> m b
+parse :: Parser a -> [Letter] -> [(a, [Letter])]
+parse (Parser f) s = f s
 
--- instance TibMonad Parser where
---     -- result :: a -> Parser a
---     result v = Parser (\inp -> [(v, inp)])
---     -- bind :: Parser a -> (a -> Parser b) -> Parser b
---     p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
+class TibMonad m where
+    result :: a -> m a
+    bind :: m a -> (a -> m b) -> m b
 
-result :: a -> Parser a
-result v = \inp -> [(v, inp)]
+instance TibMonad Parser where
+    -- result :: a -> Parser a
+    result v = Parser (\inp -> [(v, inp)])
+    -- bind :: Parser a -> (a -> Parser b) -> Parser b
+    p `bind` f = Parser (\inp -> concat [parse (f v) inp' | (v, inp') <- parse p inp])
+
+-- result :: a -> Parser a
+-- result v = \inp -> [(v, inp)]
 
 zero :: Parser a
-zero = \inp -> []
+zero = Parser (\inp -> [])
 
 item :: Parser Letter
-item =
-  \inp ->
-    case inp of
-      [] -> []
-      (x:xs) -> [(x, xs)]
+item = Parser (\inp -> case inp of
+                 [] -> []
+                 (x:xs) -> [(x, xs)])
 
-bind :: Parser a -> (a -> Parser b) -> Parser b
-p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
+-- bind :: Parser a -> (a -> Parser b) -> Parser b
+-- p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
 
 myseq :: Parser a -> Parser b -> Parser (a, b)
 p `myseq` q = p `bind` \x -> q `bind` \y -> result (x, y)
@@ -315,8 +317,8 @@ p `myseq` q = p `bind` \x -> q `bind` \y -> result (x, y)
 --       then result x
 --       else zero
 
--- plus :: Parser a -> Parser a -> Parser a
--- p `plus` q = \inp -> (p inp ++ q inp)
+plus :: Parser a -> Parser a -> Parser a
+p `plus` q = Parser (\inp -> (parse p inp ++ parse q inp))
 
 -- vowel :: Parser Letter
 -- vowel = sat isVowel
