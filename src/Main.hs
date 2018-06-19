@@ -276,31 +276,37 @@ data Ptree a =
         [Ptree a]
   deriving (Eq, Show)
 
--- type Parser a = ([Letter] -> [(a, [Letter])])
-data Parser a = Parser ([Letter] -> [(a, [Letter])])
+type Parser a = [Letter] -> [(a, [Letter])]
+-- data Parser a = Parser ([Letter] -> [(a, [Letter])])
 
-class TibMonad m where
-    result :: a -> m a
-    bind :: m a -> (a -> m b) -> m b
+-- class TibMonad m where
+--     result :: a -> m a
+--     bind :: m a -> (a -> m b) -> m b
 
-instance TibMonad Parser where
-    -- result :: a -> Parser a
-    result v = \inp -> [(v, inp)]
-    -- -- bind :: Parser a -> (a -> Parser b) -> Parser b
-    -- p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
+-- instance TibMonad Parser where
+--     -- result :: a -> Parser a
+--     result v = Parser (\inp -> [(v, inp)])
+--     -- bind :: Parser a -> (a -> Parser b) -> Parser b
+--     p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
 
--- zero :: Parser a
--- zero = \inp -> []
+result :: a -> Parser a
+result v = \inp -> [(v, inp)]
 
--- item :: Parser Letter
--- item =
---   \inp ->
---     case inp of
---       [] -> []
---       (x:xs) -> [(x, xs)]
+zero :: Parser a
+zero = \inp -> []
 
--- seq :: Parser a -> Parser b -> Parser (a, b)
--- p `seq` q = \inp -> [((v, w), inp') | (v, inp') <- p inp, (w, inp'') <- q inp']
+item :: Parser Letter
+item =
+  \inp ->
+    case inp of
+      [] -> []
+      (x:xs) -> [(x, xs)]
+
+bind :: Parser a -> (a -> Parser b) -> Parser b
+p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
+
+myseq :: Parser a -> Parser b -> Parser (a, b)
+p `myseq` q = p `bind` \x -> q `bind` \y -> result (x, y)
 
 -- sat :: (Letter -> Bool) -> Parser Letter
 -- sat p =
