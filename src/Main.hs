@@ -6,40 +6,15 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 data Letter
-  = Ka
-  | Kha
-  | Ga
-  | Nga
-  | Ca
-  | Cha
-  | Ja
-  | Nya
-  | Ta
-  | Tha
-  | Da
-  | Na
-  | Pa
-  | Pha
-  | Ba
-  | Ma
-  | Tsa
-  | Tsha
-  | Dza
-  | Wa
-  | Zha
-  | Za
-  | Achung
-  | Ya
-  | Ra
-  | La
-  | Sha
-  | Sa
-  | Ha
-  | A
-  | I
-  | U
-  | E
-  | O
+  = Ka | Kha | Ga | Nga
+  | Ca | Cha | Ja | Nya
+  | Ta | Tha | Da | Na
+  | Pa | Pha | Ba | Ma
+  | Tsa | Tsha | Dza | Wa
+  | Zha | Za | Achung | Ya
+  | Ra | La | Sha | Sa
+  | Ha | A
+  | I | U | E | O
   deriving (Eq, Ord, Read, Enum)
 
 data SyllableComponent
@@ -163,7 +138,6 @@ stringToLetter s =
     "e" -> E
     "o" -> O
 
--- letters = ['K', 'G', 'N', 'C', 'J', 'T', 'D', 'P', 'B', 'M', 'W', 'Z', '\'', 'Y', 'R', 'L', 'S', 'H', 'A', 'I', 'U', 'E', 'O']
 alphabet = map letterToString [(Ka) .. (O)]
 
 consonants = Set.fromList [(Ka) .. (Ha)]
@@ -278,129 +252,119 @@ data Ptree a =
 
 -- type Parser a = [Letter] -> [(a, [Letter])]
 -- data Parser a = Parser ([Letter] -> [(a, [Letter])])
+
+-- result :: a -> Parser a
+-- result v = \inp -> [(v, inp)]
+
+-- zero :: Parser a
+-- zero = Parser (\inp -> [])
+
+-- bind :: Parser a -> (a -> Parser b) -> Parser b
+-- p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
+
+-- plus :: Parser a -> Parser a -> Parser a
+-- p `plus` q = Parser (\inp -> (parse p inp ++ parse q inp))
+
 newtype Parser a = Parser ([Letter] -> [(a, [Letter])])
 
 parse :: Parser a -> [Letter] -> [(a, [Letter])]
 parse (Parser f) s = f s
 
-class TibMonad m where
+class ParseMonad m where
     result :: a -> m a
     bind :: m a -> (a -> m b) -> m b
 
-instance TibMonad Parser where
+instance ParseMonad Parser where
     -- result :: a -> Parser a
     result v = Parser (\inp -> [(v, inp)])
     -- bind :: Parser a -> (a -> Parser b) -> Parser b
     p `bind` f = Parser (\inp -> concat [parse (f v) inp' | (v, inp') <- parse p inp])
-
--- result :: a -> Parser a
--- result v = \inp -> [(v, inp)]
-
-zero :: Parser a
-zero = Parser (\inp -> [])
 
 item :: Parser Letter
 item = Parser (\inp -> case inp of
                  [] -> []
                  (x:xs) -> [(x, xs)])
 
--- bind :: Parser a -> (a -> Parser b) -> Parser b
--- p `bind` f = \inp -> concat [f v inp' | (v, inp') <- p inp]
-
 myseq :: Parser a -> Parser b -> Parser (a, b)
 p `myseq` q = p `bind` \x -> q `bind` \y -> result (x, y)
 
--- sat :: (Letter -> Bool) -> Parser Letter
--- sat p =
---   item `bind` \x ->
---     if p x
---       then result x
---       else zero
+class ParseMonad m => ParseMonad0Plus m where
+    zero :: m a
+    plus :: m a -> m a -> m a
 
-plus :: Parser a -> Parser a -> Parser a
-p `plus` q = Parser (\inp -> (parse p inp ++ parse q inp))
+instance ParseMonad0Plus Parser where
+    -- zero :: Parser a
+    zero = Parser (\inp -> [])
+    -- plus :: Parser a -> Parser a -> Parser a
+    p `plus` q = Parser (\inp -> (parse p inp ++ parse q inp))
 
--- vowel :: Parser Letter
--- vowel = sat isVowel
+sat :: (Letter -> Bool) -> Parser Letter
+sat p =
+  item `bind` \x ->
+    if p x
+      then result x
+      else zero
 
--- ragoLetter :: Parser Letter
--- ragoLetter = sat isRagoLetter
+vowel :: Parser Letter
+vowel = sat isVowel
 
--- rago :: Parser [Letter]
--- rago = sat isRa `bind` \x -> sat isRagoLetter `bind` \y -> result [x, y]
+ragoLetter :: Parser Letter
+ragoLetter = sat isRagoLetter
 
--- sago :: Parser [Letter]
--- sago = sat isSa `bind` \x -> sat isSagoLetter `bind` \y -> result [x, y]
+rago :: Parser [Letter]
+rago = sat isRa `bind` \x -> sat isRagoLetter `bind` \y -> result [x, y]
 
--- lago :: Parser [Letter]
--- lago = sat isLa `bind` \x -> sat isLagoLetter `bind` \y -> result [x, y]
+sago :: Parser [Letter]
+sago = sat isSa `bind` \x -> sat isSagoLetter `bind` \y -> result [x, y]
 
--- superscribe :: Parser [Letter]
--- superscribe = rago `plus` sago `plus` lago
+lago :: Parser [Letter]
+lago = sat isLa `bind` \x -> sat isLagoLetter `bind` \y -> result [x, y]
 
--- rata :: Parser [Letter]
--- rata = sat isRataLetter `bind` \x -> sat isRa `bind` \y -> result [x, y]
+superscribe :: Parser [Letter]
+superscribe = rago `plus` sago `plus` lago
 
--- yata :: Parser [Letter]
--- yata = sat isYataLetter `bind` \x -> sat isYa `bind` \y -> result [x, y]
+rata :: Parser [Letter]
+rata = sat isRataLetter `bind` \x -> sat isRa `bind` \y -> result [x, y]
 
--- lata :: Parser [Letter]
--- lata = sat isLataLetter `bind` \x -> sat isLa `bind` \y -> result [x, y]
+yata :: Parser [Letter]
+yata = sat isYataLetter `bind` \x -> sat isYa `bind` \y -> result [x, y]
 
--- wazur :: Parser [Letter]
--- wazur = sat isWazurLetter `bind` \x -> sat isWa `bind` \y -> result [x, y]
+lata :: Parser [Letter]
+lata = sat isLataLetter `bind` \x -> sat isLa `bind` \y -> result [x, y]
 
--- subscribe :: Parser [Letter]
--- subscribe = rata `plus` yata `plus` lata `plus` wazur
+wazur :: Parser [Letter]
+wazur = sat isWazurLetter `bind` \x -> sat isWa `bind` \y -> result [x, y]
 
--- -- start = stack `bind` \x -> sat isVowel `bind` \y -> result [x, y]
+subscribe :: Parser [Letter]
+subscribe = rata `plus` yata `plus` lata `plus` wazur
 
--- ptAdd :: String -> Ptree Char
--- ptAdd (c:cs)
---   | cs == [] = Pnode c []
---   | otherwise = Pnode c [ptAdd cs]
+-- start = stack `bind` \x -> sat isVowel `bind` \y -> result [x, y]
 
--- ptInsert :: String -> [Ptree Char] -> [Ptree Char]
--- ptInsert [] ts = ts
--- ptInsert s [] = [ptAdd s]
--- ptInsert s@(c:cs) (x@(Pnode v ch):xs)
---   | c == v = (Pnode v (ptInsert cs ch)) : xs
---   | otherwise = x : (ptInsert s xs)
+ptAdd :: String -> Ptree Char
+ptAdd (c:cs)
+  | cs == [] = Pnode c []
+  | otherwise = Pnode c [ptAdd cs]
 
--- prefixTree = ptInsert "g." (foldr ptInsert [] alphabet)
+ptInsert :: String -> [Ptree Char] -> [Ptree Char]
+ptInsert [] ts = ts
+ptInsert s [] = [ptAdd s]
+ptInsert s@(c:cs) (x@(Pnode v ch):xs)
+  | c == v = (Pnode v (ptInsert cs ch)) : xs
+  | otherwise = x : (ptInsert s xs)
 
--- ptNext :: String -> [Ptree Char] -> String -> Maybe String
--- ptNext [] _ _ = Nothing
--- ptNext _ [] _ = Nothing
--- ptNext s@(c:cs) (x@(Pnode v children):xs) acc
---   | c /= v = ptNext s xs acc
---   | cs == [] && c == v = Just (acc ++ [c])
---   | c == v = ptNext cs children (acc ++ [c])
---   | otherwise = Nothing
+prefixTree = ptInsert "g." (foldr ptInsert [] alphabet)
 
--- prefix :: String -> Maybe String
--- prefix s = ptNext s prefixTree ""
+ptNext :: String -> [Ptree Char] -> String -> Maybe String
+ptNext [] _ _ = Nothing
+ptNext _ [] _ = Nothing
+ptNext s@(c:cs) (x@(Pnode v children):xs) acc
+  | c /= v = ptNext s xs acc
+  | cs == [] && c == v = Just (acc ++ [c])
+  | c == v = ptNext cs children (acc ++ [c])
+  | otherwise = Nothing
 
--- builder :: Char -> [String] -> [String]
--- builder c [] = [[c]]
--- builder c s@(x:xs)
---   | prefix (c : x) == Nothing = ([c] : s)
---   | otherwise = (c : x) : xs
-
--- build :: String -> [String]
--- build s = foldr builder [] s
-
--- letters :: String -> [Letter]
--- letters s = map stringToLetter (build s)
-
--- vowelIndexer :: [Letter] -> Int -> Maybe Int
--- vowelIndexer [] _ = Nothing
--- vowelIndexer (l:ls) n
---   | elem l [(A) .. (O)] = Just n
---   | otherwise = vowelIndexer ls (n + 1)
-
--- vowelIndex :: [Letter] -> Maybe Int
--- vowelIndex ls = vowelIndexer ls 0
+prefix :: String -> Maybe String
+prefix s = ptNext s prefixTree ""
 
 main :: IO ()
 main = do
