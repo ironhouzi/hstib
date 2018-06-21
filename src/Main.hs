@@ -171,6 +171,13 @@ wazurLetters =
   Set.fromList
     [Ka, Kha, Ga, Ca, Nya, Ta, Da, Tsa, Tsha, Zha, Za, Ra, La, Sha, Sa, Ha]
 
+superstackRoots = ragoLetters `Set.intersection` lagoLetters
+                              `Set.intersection` sagoLetters
+                              `Set.intersection` yataLetters
+                              `Set.intersection` rataLetters
+                              `Set.intersection` lataLetters
+                              `Set.intersection` wazurLetters
+
 isPrefix :: Letter -> Bool
 isPrefix l = Set.member l prefixLetters
 
@@ -222,6 +229,9 @@ isLataLetter l = Set.member l lataLetters
 isWazurLetter :: Letter -> Bool
 isWazurLetter l = Set.member l wazurLetters
 
+superstackRoot :: Letter -> Bool
+superstackRoot l = Set.member l superstackRoots
+
 superscribes :: Letter -> Letter -> Bool
 Ra `superscribes` l = isRagoLetter l
 La `superscribes` l = isLagoLetter l
@@ -234,16 +244,6 @@ Ra `subscribes` l = isRataLetter l
 La `subscribes` l = isLataLetter l
 Wa `subscribes` l = isWazurLetter l
 subscribes _ _ = False
-
-vowelIsFirst :: [Letter] -> ParsedSyllable
-vowelIsFirst (l:ls) = newParsedSyllable [(l, Root)]
-
-vowelIsSecond :: [Letter] -> ParsedSyllable
-vowelIsSecond ls
-  | (isConsonant . head $ letters) && (isVowel . last $ letters) =
-    newParsedSyllable [(head letters, Root), (last letters, Vowel)]
-  where
-    letters = take 2 ls
 
 data Ptree a =
   Pnode a
@@ -308,9 +308,6 @@ sat p =
 vowel :: Parser Letter
 vowel = sat isVowel
 
-ragoLetter :: Parser Letter
-ragoLetter = sat isRagoLetter
-
 rago :: Parser [Letter]
 rago = sat isRa `bind` \x -> sat isRagoLetter `bind` \y -> result [x, y]
 
@@ -338,7 +335,9 @@ wazur = sat isWazurLetter `bind` \x -> sat isWa `bind` \y -> result [x, y]
 subscribe :: Parser [Letter]
 subscribe = rata `plus` yata `plus` lata `plus` wazur
 
--- start = stack `bind` \x -> sat isVowel `bind` \y -> result [x, y]
+stack :: Parser [Letter]
+stack = superscribe `plus` subscribe
+
 
 ptAdd :: String -> Ptree Char
 ptAdd (c:cs)
